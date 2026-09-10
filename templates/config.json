@@ -1,0 +1,22 @@
+{
+  "researcher": {
+    "enabled": false,
+    "backend": "claude",
+    "model": "claude-sonnet-4-6",
+    "effort": "high"
+  },
+  "diversifier": {
+    "enabled": false,
+    "backend": "claude",
+    "model": "claude-sonnet-4-6",
+    "effort": "high"
+  },
+  "html_report": false,
+  "venue": "",
+  "statistics": {
+    "enabled": false,
+    "alpha": 0.05,
+    "power": 0.8,
+    "correction": "holm"
+  }
+}

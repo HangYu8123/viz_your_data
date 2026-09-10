@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>viz_results setup</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #fff; --ink: #1c2330; --muted: #5d6675; --line: #dfe3e8;
+    --accent: #0072B2; --accent-ink: #fff; --ok: #009E73; --warn: #D55E00; --soft: #eef3f8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #14181f; --panel: #1c222b; --ink: #e8ecf1; --muted: #9aa5b3; --line: #2c3540; --soft: #232b36; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--panel); border-bottom: 1px solid var(--line); padding: 10px 24px; display: flex; align-items: center; gap: 16px; }
+  header h1 { font-size: 16px; margin: 0; }
+  header .proj { color: var(--muted); font-family: ui-monospace, Menlo, monospace; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+  main { max-width: 1180px; margin: 0 auto; padding: 20px 24px 80px; display: grid; grid-template-columns: 1fr 380px; gap: 20px; }
+  @media (max-width: 960px) { main { grid-template-columns: 1fr; } aside { position: static !important; } }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; margin-bottom: 18px; }
+  section h2 { font-size: 15px; margin: 0 0 4px; }
+  section .hint { color: var(--muted); margin: 0 0 12px; font-size: 13px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 3px; }
+  input[type=text], textarea, select { width: 100%; border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; font: inherit; background: var(--bg); color: var(--ink); }
+  textarea { min-height: 64px; resize: vertical; }
+  textarea.big { min-height: 160px; font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  button { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 6px; padding: 6px 12px; font: inherit; cursor: pointer; }
+  button:hover { background: var(--soft); }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  button.primary:hover { filter: brightness(1.08); }
+  button.small { padding: 3px 8px; font-size: 12px; }
+  .src { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin: 12px 0; background: var(--bg); }
+  .src .head { display: flex; align-items: center; gap: 8px; }
+  .src .head input { flex: 1; }
+  .src .head .n { font-weight: 600; color: var(--muted); }
+  .file { display: flex; gap: 8px; align-items: center; }
+  .file input { flex: 1; font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+  .preview { margin-top: 6px; background: var(--panel); border: 1px dashed var(--line); border-radius: 6px; padding: 6px 8px; font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; white-space: pre; overflow: auto; max-height: 140px; color: var(--muted); }
+  .agent { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin-top: 10px; background: var(--bg); }
+  .agent .top { display: flex; align-items: center; gap: 10px; }
+  .agent .top strong { flex: 1; }
+  .switch { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px; }
+  .switch input { width: 34px; height: 18px; appearance: none; background: var(--line); border-radius: 9px; position: relative; cursor: pointer; margin: 0; }
+  .switch input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: left .15s; }
+  .switch input:checked { background: var(--ok); }
+  .switch input:checked::after { left: 18px; }
+  .agent.off .body { opacity: .45; pointer-events: none; }
+  aside { position: sticky; top: 64px; align-self: start; }
+  aside section { padding: 14px 16px; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+  .tabs button.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  #out { font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; white-space: pre-wrap; max-height: 60vh; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px; margin: 0; }
+  .status { font-size: 12.5px; margin-top: 8px; min-height: 18px; }
+  .status.ok { color: var(--ok); } .status.err { color: var(--warn); }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  /* file browser modal */
+  #modal { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; align-items: center; justify-content: center; z-index: 20; }
+  #modal .box { background: var(--panel); border-radius: 10px; width: min(720px, 92vw); max-height: 80vh; display: flex; flex-direction: column; border: 1px solid var(--line); }
+  #modal .bar { display: flex; gap: 8px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  #modal .path { flex: 1; font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); }
+  #modal ul { list-style: none; margin: 0; padding: 6px 0; overflow: auto; }
+  #modal li { padding: 5px 14px; cursor: pointer; display: flex; gap: 8px; font-size: 13px; }
+  #modal li:hover { background: var(--soft); }
+  #modal li .sz { color: var(--muted); margin-left: auto; font-size: 11.5px; }
+  .chip { display: inline-block; background: var(--soft); border-radius: 12px; padding: 1px 8px; font-size: 11.5px; color: var(--muted); margin: 2px 4px 2px 0; }
+  kbd { font-family: ui-monospace, Menlo, monospace; background: var(--soft); padding: 0 4px; border-radius: 4px; font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>viz_results setup</h1>
+  <div class="proj" id="proj">connecting…</div>
+  <button id="saveTop" class="primary">Save goal.md + data.md + config.json</button>
+</header>
+
+<main>
+<div>
+  <!-- ================= DATA ================= -->
+  <section id="secData">
+    <h2>1. Data to parse → <kbd>viz/data.md</kbd></h2>
+    <p class="hint">One block per file type. Pick a single example file so the parser author can open it; describe what the file means and what you expect the numbers to look like. <button class="small" id="detect">Auto-detect file types in project</button></p>
+
+    <label>Directory layout (how participant / condition / trial are encoded in paths)</label>
+    <textarea id="layout" placeholder="data/&lt;participant_id&gt;_&lt;YYYYMMDD_HHMMSS&gt;/rosbag/ …  condition order is in conditions.csv"></textarea>
+
+    <div id="sources"></div>
+    <div class="actions"><button id="addSrc">+ Add file type</button></div>
+
+    <div class="row">
+      <div><label>Mapping tables (participant → condition order, etc.)</label><textarea id="mapping"></textarea></div>
+      <div><label>Exclusions (sessions / participants to drop, and why)</label><textarea id="exclusions"></textarea></div>
+    </div>
+  </section>
+
+  <!-- ================= GOAL ================= -->
+  <section id="secGoal">
+    <h2>2. Goals → <kbd>viz/goal.md</kbd></h2>
+    <p class="hint">Fill the fields, or paste the relevant parts of your paper (method, hypotheses, results) into the last box — the analysis step reads both.</p>
+    <label>Study name</label><input type="text" id="gName" placeholder="Shared-autonomy explainability user study">
+    <label>Experiment summary</label><textarea id="gSummary" placeholder="Task, robot/system, what participants did, what was recorded."></textarea>
+    <div class="row">
+      <div><label>Conditions / independent variables</label><textarea id="gConditions" placeholder="C1 = no explanation, C2 = textual, C3 = visual. Within-subjects, Latin-square order."></textarea></div>
+      <div><label>Participants</label><textarea id="gParticipants" placeholder="N = 12, exclusions…"></textarea></div>
+    </div>
+    <label>Metrics / dependent variables (one per line: name — unit — how computed — higher/lower is better)</label>
+    <textarea id="gMetrics" placeholder="intervention_count — count/trial — takeovers from /control_mode — lower is better"></textarea>
+    <label>Hypotheses to prove (one per line, numbered)</label>
+    <textarea id="gHyp" placeholder="H1: Participants take over less with visual explanations than with none (intervention_count, C3 &lt; C1).&#10;H2: …"></textarea>
+    <label>Exploratory / fun results to look at</label>
+    <textarea id="gFun" placeholder="- Does trust correlate with completion time?&#10;- Gaze switching over a trial"></textarea>
+    <div class="row3">
+      <div><label>Venue</label><input type="text" id="gVenue" list="venues" placeholder="IEEE RA-L / ICRA / HRI"><datalist id="venues"><option>IEEE RA-L</option><option>ICRA</option><option>IROS</option><option>ACM/IEEE HRI</option><option>RSS</option><option>CoRL</option><option>T-RO</option><option>CHI</option></datalist></div>
+      <div><label>Figure budget</label><input type="text" id="gBudget" placeholder="e.g. 4 figures, 1 hero"></div>
+      <div><label>Style notes</label><input type="text" id="gStyle" placeholder="grayscale-safe, match Fig. 2 style"></div>
+    </div>
+    <label>Paste from paper (optional; raw text is fine)</label>
+    <textarea id="gPaste" class="big" placeholder="Paste Method / Hypotheses / Results sections here."></textarea>
+  </section>
+
+  <!-- ================= AGENTS ================= -->
+  <section id="secAgents">
+    <h2>3. Optional stages → <kbd>viz/config.json</kbd></h2>
+    <p class="hint">Agents run after the visualization plan is proposed; they only read and search and return a markdown report. Statistics runs after the figures are built, on the same data.</p>
+
+    <div class="agent" id="agResearcher">
+      <div class="top"><strong>Online researcher</strong><span class="chip">finds top-venue papers with similar figures and extracts their style</span>
+        <label class="switch"><input type="checkbox" data-agent="researcher" class="agOn"> on</label></div>
+      <div class="body row3">
+        <div><label>Backend</label><select class="agBackend" data-agent="researcher"><option value="claude">Claude Code CLI</option><option value="codex">Codex CLI</option></select></div>
+        <div><label>Model</label><input type="text" class="agModel" data-agent="researcher" list="modelsClaude"></div>
+        <div><label>Effort</label><select class="agEffort" data-agent="researcher"></select></div>
+      </div>
+    </div>
+
+    <div class="agent" id="agDiversifier">
+      <div class="top"><strong>Diversifier</strong><span class="chip">searches for more diverse ways to express the data and support the claims</span>
+        <label class="switch"><input type="checkbox" data-agent="diversifier" class="agOn"> on</label></div>
+      <div class="body row3">
+        <div><label>Backend</label><select class="agBackend" data-agent="diversifier"><option value="claude">Claude Code CLI</option><option value="codex">Codex CLI</option></select></div>
+        <div><label>Model</label><input type="text" class="agModel" data-agent="diversifier" list="modelsClaude"></div>
+        <div><label>Effort</label><select class="agEffort" data-agent="diversifier"></select></div>
+      </div>
+    </div>
+
+    <datalist id="modelsClaude"><option>claude-sonnet-4-6</option><option>claude-opus-4-6</option><option>claude-sonnet-5</option><option>claude-opus-5</option><option>sonnet</option><option>opus</option></datalist>
+    <datalist id="modelsCodex"><option>gpt-5.6-luna</option><option>gpt-5.6-sol</option><option>gpt-5.6-terra</option><option>gpt-5.5</option></datalist>
+
+    <label class="switch" style="margin-top:12px"><input type="checkbox" id="htmlReport"> Also build the interactive HTML exploration report</label>
+
+    <div class="agent" id="agStats">
+      <div class="top"><strong>Statistics</strong><span class="chip">minimal effect size per claim · ANOVA / t-test / correlation · statistics.md + statistics.html</span>
+        <label class="switch"><input type="checkbox" id="statsOn"> on</label></div>
+      <div class="body row3">
+        <div><label>α (significance level)</label><select id="statsAlpha"><option>0.05</option><option>0.01</option><option>0.1</option></select></div>
+        <div><label>Target power (for minimal detectable effect)</label><select id="statsPower"><option>0.8</option><option>0.9</option><option>0.95</option></select></div>
+        <div><label>Multiple-comparison correction</label><select id="statsCorr"><option value="holm">Holm</option><option value="bonferroni">Bonferroni</option><option value="none">none</option></select></div>
+      </div>
+      <label>Domain-meaningful minimal effects (optional, one per line: H1 = 1 takeover/trial)</label>
+      <textarea id="statsSesoi" placeholder="H1 = 1 takeover per trial&#10;H2 = 5 s"></textarea>
+    </div>
+  </section>
+</div>
+
+<aside>
+  <section>
+    <div class="tabs"><button data-t="data" class="active">data.md</button><button data-t="goal">goal.md</button><button data-t="config">config.json</button></div>
+    <pre id="out"></pre>
+    <div class="actions">
+      <button id="save" class="primary">Save to viz/</button>
+      <button id="download">Download files</button>
+    </div>
+    <div class="status" id="status"></div>
+    <p class="hint" style="margin-top:10px">Then, in the study folder: <kbd>/viz_results</kbd> (Claude Code) or <kbd>$viz_results</kbd> (Codex).</p>
+  </section>
+</aside>
+</main>
+
+<div id="modal"><div class="box">
+  <div class="bar"><button class="small" id="mUp">↑ up</button><span class="path" id="mPath"></span><button class="small" id="mClose">close</button></div>
+  <ul id="mList"></ul>
+</div></div>
+
+<script>
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const EFFORT = { claude: ["low","medium","high","xhigh","max"], codex: ["low","medium","high","xhigh","max"] };
+const DEFAULT_MODEL = { claude: "claude-sonnet-4-6", codex: "gpt-5.6-luna" };
+let online = false, pickTarget = null, tab = "data";
+
+// ---------- sources ----------
+let srcN = 0;
+function addSource(v = {}) {
+  const id = ++srcN;
+  const d = document.createElement("div"); d.className = "src"; d.dataset.id = id;
+  d.innerHTML = `
+    <div class="head"><span class="n">#${id}</span>
+      <input type="text" class="sType" placeholder="File type / name, e.g. rosbag2 (.mcap), questionnaire CSV, video.mp4" value="${esc(v.type||"")}">
+      <button class="small sDel">remove</button></div>
+    <label>Files / glob</label><input type="text" class="sGlob" placeholder="data/*/rosbag/*.mcap" value="${esc(v.glob||"")}">
+    <label>Example file (one is enough)</label>
+    <div class="file"><input type="text" class="sExample" placeholder="click Browse to pick a file in the project" value="${esc(v.example||"")}"><button class="small sBrowse">Browse…</button></div>
+    <div class="preview sPreview" hidden></div>
+    <label>What this file means / format (topics, columns, schema)</label><textarea class="sMeaning">${esc(v.meaning||"")}</textarea>
+    <div class="row">
+      <div><label>Fields that matter (name → meaning → unit)</label><textarea class="sFields"></textarea></div>
+      <div><label>How to derive the metrics from it</label><textarea class="sDerive"></textarea></div>
+    </div>
+    <div class="row">
+      <div><label>Known quirks</label><textarea class="sQuirks"></textarea></div>
+      <div><label>Expected outcome (lets the parser be sanity-checked)</label><textarea class="sExpect" placeholder="3–8 interventions per trial; C1 highest"></textarea></div>
+    </div>`;
+  $("#sources").appendChild(d);
+  d.querySelector(".sDel").onclick = () => { d.remove(); render(); };
+  d.querySelector(".sBrowse").onclick = () => openBrowser(d);
+  d.querySelector(".sExample").addEventListener("change", () => previewFor(d));
+  d.querySelectorAll("input,textarea").forEach(e => e.addEventListener("input", render));
+  if (v.example) previewFor(d);
+  render();
+  return d;
+}
+function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;"); }
+
+async function previewFor(d) {
+  const rel = d.querySelector(".sExample").value.trim(), box = d.querySelector(".sPreview");
+  if (!rel || !online) { box.hidden = true; return; }
+  try {
+    const r = await (await fetch("/api/preview?path=" + encodeURIComponent(rel))).json();
+    if (r.error) throw new Error(r.error);
+    box.hidden = false;
+    box.textContent = r.kind === "text" ? r.head : r.kind === "dir" ? "directory: " + r.entries.join(", ") : `binary file, ${fmtSize(r.size)}`;
+  } catch (e) { box.hidden = false; box.textContent = "preview failed: " + e.message; }
+}
+function fmtSize(n) { return n == null ? "" : n > 1e9 ? (n/1e9).toFixed(1)+" GB" : n > 1e6 ? (n/1e6).toFixed(1)+" MB" : n > 1e3 ? (n/1e3).toFixed(0)+" KB" : n+" B"; }
+
+// ---------- file browser ----------
+let mRel = "";
+function openBrowser(d) { pickTarget = d; $("#modal").style.display = "flex"; loadDir(d.querySelector(".sExample").value.replace(/\/[^/]*$/, "") || ""); }
+async function loadDir(rel) {
+  const r = await (await fetch("/api/ls?path=" + encodeURIComponent(rel))).json();
+  if (r.error) { alert(r.error); return; }
+  mRel = r.rel; $("#mPath").textContent = "/" + r.rel;
+  const ul = $("#mList"); ul.innerHTML = "";
+  for (const e of r.entries) {
+    const li = document.createElement("li");
+    li.innerHTML = `<span>${e.dir ? "📁" : "📄"}</span><span>${esc(e.name)}</span><span class="sz">${e.dir ? "" : fmtSize(e.size)}</span>`;
+    li.onclick = () => e.dir ? loadDir(e.rel) : pick(e.rel);
+    if (e.dir) { const b = document.createElement("button"); b.className = "small"; b.textContent = "use dir"; b.style.marginLeft = "6px"; b.onclick = ev => { ev.stopPropagation(); pick(e.rel); }; li.insertBefore(b, li.lastElementChild); }
+    ul.appendChild(li);
+  }
+}
+function pick(rel) { pickTarget.querySelector(".sExample").value = rel; previewFor(pickTarget); $("#modal").style.display = "none"; render(); }
+$("#mUp").onclick = () => loadDir(mRel.includes("/") ? mRel.replace(/\/[^/]*$/, "") : "");
+$("#mClose").onclick = () => $("#modal").style.display = "none";
+$("#modal").onclick = e => { if (e.target.id === "modal") $("#modal").style.display = "none"; };
+
+// ---------- detect ----------
+$("#detect").onclick = async () => {
+  if (!online) return alert("Auto-detect needs the local server (python gui.py --project …).");
+  const r = await (await fetch("/api/detect")).json();
+  const keep = r.types.filter(t => t.count >= 1 && ![".ds_store",".pyc"].includes(t.ext)).slice(0, 12);
+  if (!$$("#sources .src").some(d => d.querySelector(".sType").value)) { $("#sources").innerHTML = ""; srcN = 0; }
+  for (const t of keep) addSource({ type: `${t.ext} files (${t.count})`, glob: t.pattern, example: t.example });
+  if (!$("#layout").value) $("#layout").value = keep.map(t => t.pattern).join("\n");
+  render();
+};
+
+// ---------- agents ----------
+function agentUI(name) {
+  const box = $(`#ag${name[0].toUpperCase()+name.slice(1)}`);
+  const on = box.querySelector(".agOn"), be = box.querySelector(".agBackend"), mo = box.querySelector(".agModel"), ef = box.querySelector(".agEffort");
+  const fillEffort = (b, v) => { ef.innerHTML = EFFORT[b].map(x => `<option ${x===v?"selected":""}>${x}</option>`).join(""); };
+  be.onchange = () => { mo.value = DEFAULT_MODEL[be.value]; mo.setAttribute("list", be.value === "claude" ? "modelsClaude" : "modelsCodex"); fillEffort(be.value, "high"); render(); };
+  on.onchange = () => { box.classList.toggle("off", !on.checked); render(); };
+  [mo, ef].forEach(e => e.addEventListener("input", render));
+  return {
+    set(c) { on.checked = !!c.enabled; be.value = c.backend || "claude"; mo.value = c.model || DEFAULT_MODEL[be.value]; mo.setAttribute("list", be.value === "claude" ? "modelsClaude" : "modelsCodex"); fillEffort(be.value, c.effort || "high"); box.classList.toggle("off", !on.checked); },
+    get() { return { enabled: on.checked, backend: be.value, model: mo.value.trim() || DEFAULT_MODEL[be.value], effort: ef.value }; },
+  };
+}
+const agents = { researcher: agentUI("researcher"), diversifier: agentUI("diversifier") };
+agents.researcher.set({ enabled: false, backend: "claude" });
+agents.diversifier.set({ enabled: false, backend: "claude" });
+$("#htmlReport").onchange = render;
+$("#statsOn").onchange = () => { $("#agStats").classList.toggle("off", !$("#statsOn").checked); render(); };
+$$("#statsAlpha, #statsPower, #statsCorr, #statsSesoi").forEach(e => e.addEventListener("input", render));
+$("#agStats").classList.add("off");
+function statsGet() {
+  const sesoi = {}; v("#statsSesoi").split("\n").map(l => l.split("=")).forEach(([k, ...r]) => { if (k && r.length) sesoi[k.trim()] = r.join("=").trim(); });
+  return { enabled: $("#statsOn").checked, alpha: +$("#statsAlpha").value, power: +$("#statsPower").value, correction: $("#statsCorr").value, raw_sesoi: sesoi };
+}
+function statsSet(c) {
+  c = c || {}; $("#statsOn").checked = !!c.enabled; $("#agStats").classList.toggle("off", !c.enabled);
+  if (c.alpha) $("#statsAlpha").value = String(c.alpha); if (c.power) $("#statsPower").value = String(c.power); if (c.correction) $("#statsCorr").value = c.correction;
+  $("#statsSesoi").value = Object.entries(c.raw_sesoi || {}).map(([k, val]) => `${k} = ${val}`).join("\n");
+}
+
+// ---------- generators ----------
+const v = id => $(id).value.trim();
+function genData() {
+  const srcs = $$("#sources .src").map((d, i) => {
+    const g = c => d.querySelector(c).value.trim();
+    return `## Source ${i+1}: ${g(".sType") || "<name>"}
+- **Files / glob:** ${g(".sGlob")}
+- **Example file:** ${g(".sExample")}
+- **Format / meaning:** ${g(".sMeaning")}
+- **Fields that matter:** ${g(".sFields")}
+- **How to derive the metrics in goal.md from it:** ${g(".sDerive")}
+- **Known quirks:** ${g(".sQuirks")}
+- **Expected outcome:** ${g(".sExpect")}
+`; }).join("\n");
+  return `# data.md — what to parse and what we expect to find
+
+## Directory layout
+${v("#layout")}
+
+${srcs}
+## Mapping tables
+${v("#mapping")}
+
+## Exclusions
+${v("#exclusions")}
+`;
+}
+function genGoal() {
+  const paste = v("#gPaste");
+  return `# goal.md — ${v("#gName") || "<study name>"}
+
+## Experiment summary
+${v("#gSummary")}
+
+## Conditions / independent variables
+${v("#gConditions")}
+
+## Participants
+${v("#gParticipants")}
+
+## Metrics / dependent variables
+${v("#gMetrics")}
+
+## Hypotheses to prove
+${v("#gHyp")}
+
+## Exploratory / fun results to look at
+${v("#gFun")}
+
+## Paper context
+- Venue: ${v("#gVenue")}
+- Figure budget: ${v("#gBudget")}
+- Style: ${v("#gStyle")}
+${paste ? `\n## Pasted from paper\n\n${paste}\n` : ""}`;
+}
+function genConfig() {
+  return JSON.stringify({ researcher: agents.researcher.get(), diversifier: agents.diversifier.get(), statistics: statsGet(), html_report: $("#htmlReport").checked, venue: v("#gVenue") }, null, 2) + "\n";
+}
+function render() {
+  const t = { data: genData, goal: genGoal, config: genConfig }[tab]();
+  $("#out").textContent = t;
+  try { localStorage.setItem("viz_results_form", JSON.stringify(collect())); } catch {}
+}
+$$(".tabs button").forEach(b => b.onclick = () => { $$(".tabs button").forEach(x => x.classList.remove("active")); b.classList.add("active"); tab = b.dataset.t; render(); });
+$$("#secGoal input, #secGoal textarea, #layout, #mapping, #exclusions").forEach(e => e.addEventListener("input", render));
+
+// ---------- persistence of the form (per browser) ----------
+function collect() {
+  const o = {}; $$("#secGoal input, #secGoal textarea, #layout, #mapping, #exclusions").forEach(e => o[e.id] = e.value);
+  o.sources = $$("#sources .src").map(d => Object.fromEntries([".sType",".sGlob",".sExample",".sMeaning",".sFields",".sDerive",".sQuirks",".sExpect"].map(c => [c, d.querySelector(c).value])));
+  o.agents = { researcher: agents.researcher.get(), diversifier: agents.diversifier.get() }; o.html = $("#htmlReport").checked; o.stats = statsGet();
+  return o;
+}
+function restore(o) {
+  Object.entries(o).forEach(([k, val]) => { const e = document.getElementById(k); if (e && typeof val === "string") e.value = val; });
+  $("#sources").innerHTML = ""; srcN = 0;
+  (o.sources || []).forEach(s => { const d = addSource({ type: s[".sType"], glob: s[".sGlob"], example: s[".sExample"], meaning: s[".sMeaning"] }); [".sFields",".sDerive",".sQuirks",".sExpect"].forEach(c => d.querySelector(c).value = s[c] || ""); });
+  if (o.agents) { agents.researcher.set(o.agents.researcher); agents.diversifier.set(o.agents.diversifier); }
+  $("#htmlReport").checked = !!o.html;
+  if (o.stats) statsSet(o.stats);
+}
+
+// ---------- save / download ----------
+async function save() {
+  const body = { goal: genGoal(), data: genData(), config: genConfig() };
+  if (!online) return download();
+  const r = await (await fetch("/api/save", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })).json();
+  const s = $("#status");
+  if (r.error) { s.className = "status err"; s.textContent = r.error; }
+  else { s.className = "status ok"; s.textContent = "written: " + r.written.map(p => p.split("/").pop()).join(", "); }
+}
+function download() {
+  for (const [n, t] of [["goal.md", genGoal()], ["data.md", genData()], ["config.json", genConfig()]]) {
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([t], { type: "text/plain" })); a.download = n; a.click();
+  }
+  $("#status").className = "status ok"; $("#status").textContent = "downloaded 3 files — move them into <project>/viz/";
+}
+$("#save").onclick = save; $("#saveTop").onclick = save; $("#download").onclick = download;
+$("#addSrc").onclick = () => addSource();
+
+// ---------- init ----------
+(async () => {
+  try {
+    const st = await (await fetch("/api/state")).json();
+    online = true; $("#proj").textContent = st.project + "  →  " + st.viz_dir;
+    if (st.config.exists) { try { const c = JSON.parse(st.config.text); agents.researcher.set(c.researcher || {}); agents.diversifier.set(c.diversifier || {}); $("#htmlReport").checked = !!c.html_report; statsSet(c.statistics); } catch {} }
+  } catch { online = false; $("#proj").textContent = "offline mode — no server; Save will download files instead"; }
+  let saved = null; try { saved = JSON.parse(localStorage.getItem("viz_results_form") || "null"); } catch {}
+  if (saved) restore(saved); else addSource();
+  render();
+})();
+</script>
+</body>
+</html>
