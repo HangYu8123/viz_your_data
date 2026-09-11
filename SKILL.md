@@ -119,6 +119,12 @@ user. For **every** hypothesis, target, or fun result in goal.md:
   should conclude at a glance), **width** (`single`/`double`), and anything else
   that matters: error bars / CI type, statistical test annotation, per-participant
   overlay, log scale, normalization, what gets excluded.
+- Name a **style reference** for each candidate when one fits
+  (`style: memory_anchors/fig6`), taken from `references/styles/README.md` —
+  a library of figures from recent papers with images, style analyses and
+  ready palettes. Match the reference by purpose (grouped ablation bars, signed
+  sorted diffs, presence matrix, pipeline diagram, donut, result matrix), not
+  by topic.
 - Then ask the user **three short questions** (one sentence each, three options
   each) to pin down preferences, clarify ambiguity, or set the analysis depth.
   Good targets: aggregation level (per trial vs per participant), error
@@ -178,6 +184,9 @@ Generate `viz/figures.ipynb` with `scripts/build_notebook.py`. Structure:
    from the researcher), then **one code cell** that builds the figure with
    `st.fig(...)`, plots, annotates, and calls `st.save(f, "F3_interventions")`.
    Keep helpers used by several figures in `viz/plot_helpers.py`, not in the notebook.
+   Apply the chosen style reference with `st.use_palette("<name>")` /
+   `st.apply_preset("<paper>")` (see `PALETTES` / `PRESETS` in `ieee_style.py`
+   and the per-figure "Reproduce" notes in `references/styles/*/analysis.md`).
 4. A final cell calling `st.check_widths()` so the user can confirm every
    figure is 3.5 in or 7.16 in wide.
 
@@ -241,6 +250,7 @@ to overclaiming.
 - `references/plan_template.md` — exact layout for `plan.md` (candidates, scores, three questions).
 - `references/researcher.md`, `references/diversifier.md` — role prompts for the optional agents.
 - `references/html_report.md` — minimal pattern for the interactive HTML report.
+- `references/styles/` — reference figure library: images + vector sources from ROSETTA, DeepSeek, Cambrian-S, Cosmos 3, Memory Anchors, with style analyses and palettes (`README.md` is the index; `palettes.png` the swatches).
 - `scripts/stats_helpers.py` — scipy-only tests, effect sizes with CIs, MDE / SESOI recommendation, Holm, APA lines. Copy into `viz/`.
 - `scripts/build_stats_html.py` — renders `statistics.json` into `statistics.html`.
 - `references/statistics.md` — test-selection table, SESOI logic, statistics.md layout.

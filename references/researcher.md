@@ -32,6 +32,8 @@ bars; ICRA favors compact grouped bars with CIs), and any figure types that
 reviewers at these venues tend to criticize (bar charts of means without spread,
 rainbow colormaps, unlabeled units).
 
+Seeds: the plot author already has style references from ROSETTA (RSS 2025 workshop), DeepSeek-V3/R1, Cambrian-S, Cosmos 3 and Memory Anchors (see `references/styles/README.md` if it is in your context). Do not re-describe those; find papers that complement them for this study's venue.
+
 Rules:
 - Only cite papers you actually opened; include the URL. If you could not
   verify a figure's content, say so rather than guess.

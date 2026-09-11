@@ -45,6 +45,69 @@ MARKERS = ["o", "s", "^", "D", "v", "P", "X", "*"]
 LINESTYLES = ["-", "--", "-.", ":", (0, (5, 1)), (0, (3, 1, 1, 1))]
 HATCHES = ["", "//", "..", "xx", "\\\\", "++"]
 
+# ---- reference palettes (see references/styles/README.md) ----------------
+PALETTES = {
+    "okabe_ito": PALETTE,
+    # ROSETTA Fig. 4: pastel fills with black edges; first = method of interest
+    "rosetta": ["#77aadd", "#ef8866", "#eddd87", "#fda9ba", "#9dc0e4", "#c6a599"],
+    # ROSETTA Fig. 5: two attribute families on a light-gray absent cell
+    "rosetta_binary": ["#ef9373", "#83b1e0", "#ebeff0"],
+    # DeepSeek-V3 Fig. 1: royal-blue hero (hatch it), own-previous tint, open (grays), closed (beiges)
+    "deepseek": ["#4b69fe", "#abc0ff", "#b9bab9", "#d0d0d0", "#e8d2a0", "#f3e6c8"],
+    # DeepSeek-R1 Fig. 2 pipeline roles: models, prompts, rewards, training algo, prompts+responses, post-processing
+    "deepseek_roles": ["#c2a5f7", "#b3c6e7", "#8da8db", "#4572c4", "#aeb8c6", "#6c6c6d"],
+    # Cambrian-S Fig. 2: neutral raw, positive, negative
+    "cambrian_s": ["#dddedd", "#bbd7f1", "#feaf6d"],
+    # Cosmos 3 Fig. 6 modality label colors (language, video, audio, action); use tint() for fills
+    "cosmos3_modality": ["#1a1a8c", "#bb694a", "#6e2c6b", "#2e6b3a"],
+    # Cosmos 3 Fig. 7 donut categories
+    "cosmos3_categorical": ["#6ca066", "#257fae", "#e4b027", "#946ea3", "#498e97", "#c36868", "#d48532"],
+    # Memory Anchors: teal (new / proposed), orange (old / baseline), then gray ramp for ablation strength
+    "memory_anchors": ["#5a8e7d", "#f4a258", "#8db0a5", "#6c7b77", "#545556", "#fad0a9"],
+    # Memory Anchors Fig. 7 success-count sequential map (dark -> light)
+    "memory_anchors_seq": ["#222c5d", "#2267a9", "#95c4d6", "#e0dcb5", "#fbf9d0"],
+}
+
+# rc tweaks that reproduce the typographic / grid conventions of a reference paper
+PRESETS = {
+    "deepseek": {"font.family": "serif", "font.weight": "bold", "axes.labelweight": "bold",
+                 "axes.grid": True, "axes.grid.axis": "y", "grid.linestyle": "--", "grid.alpha": 0.5,
+                 "legend.loc": "upper center", "hatch.linewidth": 0.6},
+    "rosetta": {"font.family": "serif", "axes.grid": True, "axes.grid.axis": "y", "grid.linestyle": ":",
+                "grid.alpha": 0.6, "axes.spines.top": True, "axes.spines.right": True, "legend.frameon": True},
+    "cambrian_s": {"font.family": "sans-serif", "axes.grid": False, "axes.titlelocation": "left",
+                   "axes.titleweight": "normal"},
+    "cosmos3": {"font.family": "serif", "axes.grid": False},
+    "memory_anchors": {"font.family": "sans-serif", "axes.grid": False, "axes.titleweight": "bold",
+                       "errorbar.capsize": 2},
+}
+
+
+def use_palette(name: str) -> list[str]:
+    """Set the color cycle to a reference palette (see PALETTES) and return it."""
+    cols = PALETTES[name]
+    mpl.rcParams["axes.prop_cycle"] = mpl.cycler(color=cols)
+    return cols
+
+
+def apply_preset(name: str, font_size: float = 8.0) -> None:
+    """Re-apply base rc params then overlay a reference paper's conventions."""
+    apply_rc(font_size)
+    mpl.rcParams.update(PRESETS[name])
+
+
+def tint(color: str, amount: float = 0.2) -> str:
+    """Mix `color` with white: amount=0.2 keeps 20% of the color (Cosmos-3-style fills)."""
+    r, g, b = mpl.colors.to_rgb(color)
+    return mpl.colors.to_hex((1 - amount + amount * r, 1 - amount + amount * g, 1 - amount + amount * b))
+
+
+def ramp(color: str, n: int = 3, lo: float = 0.35, hi: float = 1.0) -> list[str]:
+    """n tints of one hue from light to full (Memory-Anchors-style ablation strength)."""
+    import numpy as _np
+    return [tint(color, a) for a in _np.linspace(lo, hi, n)]
+
+
 OUT_DIR = Path(os.environ.get("VIZ_FIG_DIR", "figures"))
 PNG_DPI = 200
 

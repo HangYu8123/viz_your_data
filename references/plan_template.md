@@ -13,11 +13,11 @@ Data summary: <N participants, M sessions per condition, which sources parsed, a
 
 ## H1 — <hypothesis sentence copied from goal.md>
 
-| rank | score | plot | x | y | z / extra encoding | width | purpose |
-|---|---|---|---|---|---|---|---|
-| 1 | 9 | box + jittered points | condition (C1–C3) | intervention_count per trial | color = condition; light lines connect the same participant across conditions | single | Show C3 < C1 with the raw spread visible, one glance |
-| 2 | 7 | paired dot plot (per participant) | condition | intervention_count, participant mean | one line per participant | single | Emphasize within-subject consistency of the drop |
-| 3 | 5 | grouped bar with 95% CI | condition | mean intervention_count | hue = task difficulty | single | Compact if space is tight; hides distribution |
+| rank | score | plot | x | y | z / extra encoding | width | style ref | purpose |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 9 | box + jittered points | condition (C1–C3) | intervention_count per trial | color = condition; light lines connect the same participant across conditions | single | – | Show C3 < C1 with the raw spread visible, one glance |
+| 2 | 7 | paired dot plot (per participant) | condition | intervention_count, participant mean | one line per participant | single | deepseek/r1_fig1 (band + line) | Emphasize within-subject consistency of the drop |
+| 3 | 5 | grouped bar with 95% CI | condition | mean intervention_count | hue = task difficulty | single | memory_anchors/fig6 | Compact if space is tight; hides distribution |
 
 Notes: error bars = 95% bootstrap CI; annotate Wilcoxon p between C1–C3 if the user wants stats markers; exclude P7 trial 2 (rosbag truncated).
 
@@ -42,6 +42,8 @@ Guidance on filling it in:
 - Keep the ranking honest: a candidate that is prettier but hides the
   distribution (bars of means) should rank below one that shows it (box/violin +
   points), unless the user's venue or space constraints say otherwise.
+- **style ref** points into `references/styles/` (paper/figure id) when a reference
+  figure's treatment fits; `–` otherwise. Say what is borrowed (palette, ramp, annotation).
 - Prefer `single` width; use `double` for timelines, multi-panel comparisons, or
   anything with many x categories.
 - The three questions should be the ones whose answers would change the figures
