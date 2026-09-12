@@ -1,6 +1,6 @@
 ---
 name: viz_results
-description: End-to-end workflow for turning experiment / user-study data into paper-ready figures. Use this skill whenever the user wants to visualize, plot, chart, or analyze experimental results, study logs, rosbags, CSV/JSON metrics, questionnaire data, or wants figures for an IEEE / conference paper — even if they only say "make a plot", "show me the results", "compare conditions", or "which figure should I use". It prepares the plotting environment, collects goals (goal.md), data descriptions (data.md) and agent settings (config.json) from the user via a local GUI or templates, writes separate data-parsing modules, proposes ranked visualization candidates per hypothesis with clarifying questions, optionally runs an online researcher and a diversifier agent (Claude or Codex CLI) to refine the plan, then builds a single Jupyter notebook that exports PDF figures at exact IEEE column widths, optionally an interactive HTML report, and optionally a statistics stage (minimal effect size per claim, ANOVA / t-test / correlation on the plotted data) written to statistics.md and statistics.html.
+description: End-to-end workflow for turning experiment / user-study data into paper-ready figures. Use this skill whenever the user wants to visualize, plot, chart, or analyze experimental results, study logs, rosbags, CSV/JSON metrics, questionnaire data, or wants figures for an IEEE / conference paper — even if they only say "make a plot", "show me the results", "compare conditions", or "which figure should I use". It prepares the plotting environment, collects goals (goal.md), data descriptions (data.md) and agent settings (config.json) from the user via a local GUI or templates, writes separate data-parsing modules, proposes ranked visualization candidates per hypothesis with clarifying questions, optionally runs an online researcher and a diversifier agent (Claude or Codex CLI) to refine the plan, then builds a single Jupyter notebook that exports PDF figures at exact IEEE column widths, optionally an interactive HTML report, and optionally a statistics stage (minimal effect size per claim, ANOVA / t-test / correlation on the plotted data) written to statistics.md and statistics.html. It records the whole trajectory of every figure, collects the user's ratings and reactions after the figures exist, and distils them into a persistent wiki that proposes gated improvements to the skill itself (WikiSkill-style); all messages to the user follow an ADHD-friendly, action-first output style.
 ---
 
 # viz_results — from raw experiment data to paper-ready figures
@@ -37,6 +37,18 @@ are relative to it. Project-side artifacts all live in `<project>/viz/`.
   encode a condition only by color — add markers, hatches, or line styles.
 - Report only what you actually verified. If a parser could not read some files,
   say which ones and why; don't silently drop them.
+- **Record as you go.** From Step 1 on, every decision that shapes a figure is
+  logged with `scripts/trajectory.py log` (stage, hypothesis, figure, note);
+  see `references/wiki_protocol.md` §1 for what belongs at each stage. The
+  trajectory is the raw layer of the evolution loop in Steps 6–7 — without it
+  feedback cannot be traced back to the choice that caused it. Skip only if
+  `record.trajectory` is false in config.json.
+- **Talk to the user action-first.** Every message follows
+  `references/output_style.md` (the `i-have-adhd` rules): first line is what
+  the reader does now, numbered steps, state restated ("Step 3 of 7"), ≤5
+  visible items per group, specific minutes for waits, wins stated concretely,
+  no preamble and no closer. Documents (plan.md, statistics.md) keep their
+  full tables; the rules shape chat messages.
 
 ## Workflow
 
@@ -89,6 +101,7 @@ criteria, and metric definitions.
 
 ### Step 1 — Analyze goal.md + data.md, then write parsers
 
+Start the record: `python3 <skill-root>/scripts/trajectory.py --project <project> start --study "<name>"`.
 Read all three files. Then inspect the actual data (list directories, open the
 example files, check schemas, count sessions per condition) before writing code —
 data.md is what the user *thinks* is there; verify it.
@@ -108,8 +121,11 @@ than no plot.
 
 ### Step 2 — Propose visualization plans (and grill the user a little)
 
-Write `viz/plan.md` following `references/plan_template.md` and show it to the
-user. For **every** hypothesis, target, or fun result in goal.md:
+Run `python3 <skill-root>/scripts/wiki.py show` first: it prints the patterns
+distilled from earlier runs (what this user / venue rated well, what failed)
+with their confidence. Apply the matching ones to your ranking and cite them
+(`wiki: P-…`) in plan.md. Then write `viz/plan.md` following
+`references/plan_template.md` and show it to the user. For **every** hypothesis, target, or fun result in goal.md:
 
 - Propose **at least 3 candidate figures**, ranked from most to least recommended,
   each with a **recommendation score** (0–10) and one line on *why* it ranks there.
@@ -239,6 +255,43 @@ Be candid in verdicts: "significant but below minimal effect" and
 "inconclusive (underpowered)" are legitimate outcomes and reviewers prefer them
 to overclaiming.
 
+### Step 6 — Collect feedback and react
+
+Right after the figures (and statistics, if enabled) exist:
+
+1. Point the user at `http://127.0.0.1:8765/feedback` (start `scripts/gui.py`
+   if it is not running). The page shows every PNG in `viz/figures/` with a
+   1–5 rating, accept / revise / reject, and a comment box, and writes into
+   the active trajectory. Without a browser, ask per figure with
+   AskUserQuestion and log with `trajectory.py feedback`.
+2. For each **revise**: change exactly what was asked, bump the version
+   (`F2_v2`), log `revise`, show the PNG, and log the user's `reaction`.
+   For each **reject**: ask one question (which other plan candidate, or what
+   was wrong with the framing), rebuild, log.
+3. Stop when every figure is accepted or the user says stop. Log the
+   run-level comments.
+
+Ratings and comments are evidence about the user and the venue; treat "too
+busy", "wrong metric", "needs stars" as different kinds of signal (style,
+parser, question) — `references/wiki_protocol.md` §2.
+
+### Step 7 — Close the run, maintain the wiki, propose one skill change
+
+1. `trajectory.py close --summary "…"` renders `viz/trajectory/run_*.md` and
+   copies it to `~/.viz_results/raw/`.
+2. Maintenance pass (`references/wiki_protocol.md` §3): read the rendered run
+   and `wiki.py show`; create or patch pattern pages (`wiki.py pattern`) with
+   evidence ids; raise confidence only with evidence from ≥2 runs; `wiki.py
+   log` the pass. The wiki is never rolled back.
+3. Propose **at most one atomic change** to this skill (`wiki.py impact
+   --status proposed`): a ranking rule, a template field, a palette default,
+   a question. Show it to the user in ≤5 lines with the evidence. Apply only
+   if they approve, mark `accepted`, and commit the skill change on its own.
+   After the next run, keep it if that run's ratings for the affected figure
+   type did not drop; otherwise revert and mark `reverted` (§4).
+
+Then send the final message (format below).
+
 ## Bundled files
 
 - `scripts/setup_env.py` — install / upgrade the plotting stack; `--check` only reports.
@@ -254,6 +307,12 @@ to overclaiming.
 - `scripts/stats_helpers.py` — scipy-only tests, effect sizes with CIs, MDE / SESOI recommendation, Holm, APA lines. Copy into `viz/`.
 - `scripts/build_stats_html.py` — renders `statistics.json` into `statistics.html`.
 - `references/statistics.md` — test-selection table, SESOI logic, statistics.md layout.
+- `scripts/trajectory.py` — append-only run trajectory (raw layer): start / log / feedback / close / render.
+- `scripts/wiki.py` — persistent wiki at `~/.viz_results/wiki` (patterns, logs, skill-impact): show / pattern / log / impact.
+- `gui/feedback.html` — `/feedback` page served by `gui.py` for ratings, actions and comments per figure.
+- `templates/wiki/` — seed pages for a fresh wiki.
+- `references/wiki_protocol.md` — what to log, how to collect feedback, maintenance pass, gating of skill changes.
+- `references/output_style.md` — the `i-have-adhd` output rules adapted to this skill's messages (MIT, ayghri/i-have-adhd).
 - `install.sh` — installs this skill for Claude Code (`~/.claude/skills`) and Codex (`~/.codex/skills`); `--package` builds `dist/viz_results.skill`.
 
 ## Installing for CLI agents
@@ -268,7 +327,8 @@ in Claude Code or `$viz_results` in Codex (or just describe the task).
 
 ## Final message to the user
 
-Lead with what was produced and where (`viz/figures.ipynb`, `viz/figures/*.pdf`),
+Follow `references/output_style.md`: first line = the one thing to do now
+(open the notebook, insert a figure, push). Then lead with what was produced and where (`viz/figures.ipynb`, `viz/figures/*.pdf`),
 which hypotheses each figure addresses, which research / diversifier suggestions
 were adopted, the statistics verdicts per claim if that stage ran, and anything
 you could not verify. Keep the list of figures as a

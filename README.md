@@ -20,6 +20,13 @@ data into paper-ready figures and statistics:
   ANOVA / correlations with effect sizes and CIs, written to `statistics.md`
   and an interactive `statistics.html`.
 - **Optional HTML exploration report** for intuition beyond static figures.
+- **Learns from you (WikiSkill-style).** Every figure's trajectory is recorded,
+  you rate the figures on a `/feedback` page, and the run is distilled into a
+  persistent wiki (`~/.viz_results/wiki`) that proposes one gated improvement
+  to the skill per run.
+- **ADHD-friendly output.** Messages follow the `i-have-adhd` rules (action
+  first, numbered steps, state restated, no filler) — adapted from
+  [ayghri/i-have-adhd](https://github.com/ayghri/i-have-adhd) (MIT).
 
 ## Install
 
@@ -57,7 +64,9 @@ scripts/              setup_env, gui, ieee_style, build_notebook, run_agent,
 gui/index.html        setup GUI (served by scripts/gui.py)
 templates/            goal.md, data.md, config.json fallbacks
 references/           plan template, researcher / diversifier prompts,
-                      statistics and HTML report guidance
+                      statistics and HTML report guidance, style library,
+                      wiki protocol, output style
+scripts/trajectory.py, scripts/wiki.py   run records and the persistent wiki
 install.sh            install for Claude Code and Codex; --package builds dist/viz_results.skill
 dist/                 packaged skill
 ```

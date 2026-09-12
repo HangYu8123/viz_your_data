@@ -25,6 +25,10 @@ from urllib.parse import parse_qs, urlparse
 
 HERE = Path(__file__).resolve().parent
 INDEX = HERE.parent / "gui" / "index.html"
+FEEDBACK = HERE.parent / "gui" / "feedback.html"
+import sys as _sys
+_sys.path.insert(0, str(HERE))
+import trajectory as _traj
 TEMPLATES = HERE.parent / "templates"
 SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv", ".claude", ".codex", "viz"}
 TEXT_EXT = {".csv", ".tsv", ".txt", ".json", ".yaml", ".yml", ".md", ".log", ".py", ".jsonl"}
@@ -92,6 +96,29 @@ def api_detect():
     return {"types": types, "project": str(PROJECT)}
 
 
+def api_figures():
+    figdir = PROJECT / VIZ_DIRNAME / "figures"
+    figs = sorted(figdir.glob("*.png")) if figdir.exists() else []
+    run = _traj.current_run(PROJECT)
+    return {"dir": str(figdir), "run": run.stem if run else None,
+            "figures": [{"id": f.stem, "url": f"/figures/{f.name}"} for f in figs]}
+
+
+def api_feedback(body: dict):
+    run = _traj.current_run(PROJECT)
+    if run is None:
+        raise RuntimeError("no active trajectory run; run `trajectory.py start` first")
+    n = 0
+    for it in body.get("items", []):
+        _traj.append(PROJECT, {"type": "feedback", "stage": "feedback", "figure": it.get("figure"), "rating": it.get("rating"),
+                               "action": it.get("action", "revise"), "comment": it.get("comment", ""), "source": "gui"})
+        n += 1
+    if body.get("overall"):
+        _traj.append(PROJECT, {"type": "feedback", "stage": "feedback", "comment": body["overall"], "source": "gui", "scope": "run"})
+        n += 1
+    return {"recorded": n, "run": run.stem}
+
+
 def api_state():
     viz = PROJECT / VIZ_DIRNAME
     def rd(name, tmpl):
@@ -134,6 +161,23 @@ class H(BaseHTTPRequestHandler):
                 self.send_header("Content-Length", str(len(data)))
                 self.end_headers()
                 self.wfile.write(data)
+            elif u.path == "/feedback":
+                data = FEEDBACK.read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+            elif u.path.startswith("/figures/"):
+                f = safe(f"{VIZ_DIRNAME}/figures/{Path(u.path).name}")
+                data = f.read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", "image/png")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+            elif u.path == "/api/figures":
+                self._json(api_figures())
             elif u.path == "/api/state":
                 self._json(api_state())
             elif u.path == "/api/ls":
@@ -154,6 +198,8 @@ class H(BaseHTTPRequestHandler):
         try:
             if u.path == "/api/save":
                 self._json(api_save(body))
+            elif u.path == "/api/feedback":
+                self._json(api_feedback(body))
             else:
                 self._json({"error": "not found"}, 404)
         except Exception as e:  # noqa: BLE001
@@ -176,7 +222,7 @@ def main() -> None:
         raise SystemExit(f"not a directory: {PROJECT}")
     srv = ThreadingHTTPServer(("127.0.0.1", a.port), H)
     url = f"http://127.0.0.1:{a.port}/"
-    print(f"viz_results GUI for {PROJECT}\n  {url}\n  writes -> {PROJECT / VIZ_DIRNAME}/  (Ctrl-C to stop)")
+    print(f"viz_results GUI for {PROJECT}\n  setup:    {url}\n  feedback: {url}feedback\n  writes -> {PROJECT / VIZ_DIRNAME}/  (Ctrl-C to stop)")
     if not a.no_browser:
         threading.Timer(0.5, lambda: webbrowser.open(url)).start()
     try:

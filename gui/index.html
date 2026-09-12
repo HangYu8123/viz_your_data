@@ -150,6 +150,7 @@
     <datalist id="modelsCodex"><option>gpt-5.6-luna</option><option>gpt-5.6-sol</option><option>gpt-5.6-terra</option><option>gpt-5.5</option></datalist>
 
     <label class="switch" style="margin-top:12px"><input type="checkbox" id="htmlReport"> Also build the interactive HTML exploration report</label>
+    <label class="switch" style="margin-top:8px"><input type="checkbox" id="recordOn" checked> Record the figure-making trajectory, collect feedback at <kbd>/feedback</kbd>, and distil patterns into the wiki (WikiSkill-style)</label>
 
     <div class="agent" id="agStats">
       <div class="top"><strong>Statistics</strong><span class="chip">minimal effect size per claim · ANOVA / t-test / correlation · statistics.md + statistics.html</span>
@@ -283,7 +284,7 @@ function agentUI(name) {
 const agents = { researcher: agentUI("researcher"), diversifier: agentUI("diversifier") };
 agents.researcher.set({ enabled: false, backend: "claude" });
 agents.diversifier.set({ enabled: false, backend: "claude" });
-$("#htmlReport").onchange = render;
+$("#htmlReport").onchange = render; $("#recordOn").onchange = render;
 $("#statsOn").onchange = () => { $("#agStats").classList.toggle("off", !$("#statsOn").checked); render(); };
 $$("#statsAlpha, #statsPower, #statsCorr, #statsSesoi").forEach(e => e.addEventListener("input", render));
 $("#agStats").classList.add("off");
@@ -353,7 +354,7 @@ ${v("#gFun")}
 ${paste ? `\n## Pasted from paper\n\n${paste}\n` : ""}`;
 }
 function genConfig() {
-  return JSON.stringify({ researcher: agents.researcher.get(), diversifier: agents.diversifier.get(), statistics: statsGet(), html_report: $("#htmlReport").checked, venue: v("#gVenue") }, null, 2) + "\n";
+  return JSON.stringify({ researcher: agents.researcher.get(), diversifier: agents.diversifier.get(), statistics: statsGet(), record: { trajectory: $("#recordOn").checked, wiki: $("#recordOn").checked }, html_report: $("#htmlReport").checked, venue: v("#gVenue") }, null, 2) + "\n";
 }
 function render() {
   const t = { data: genData, goal: genGoal, config: genConfig }[tab]();
@@ -402,7 +403,7 @@ $("#addSrc").onclick = () => addSource();
   try {
     const st = await (await fetch("/api/state")).json();
     online = true; $("#proj").textContent = st.project + "  →  " + st.viz_dir;
-    if (st.config.exists) { try { const c = JSON.parse(st.config.text); agents.researcher.set(c.researcher || {}); agents.diversifier.set(c.diversifier || {}); $("#htmlReport").checked = !!c.html_report; statsSet(c.statistics); } catch {} }
+    if (st.config.exists) { try { const c = JSON.parse(st.config.text); agents.researcher.set(c.researcher || {}); agents.diversifier.set(c.diversifier || {}); $("#htmlReport").checked = !!c.html_report; statsSet(c.statistics); if (c.record) $("#recordOn").checked = !!c.record.trajectory; } catch {} }
   } catch { online = false; $("#proj").textContent = "offline mode — no server; Save will download files instead"; }
   let saved = null; try { saved = JSON.parse(localStorage.getItem("viz_results_form") || "null"); } catch {}
   if (saved) restore(saved); else addSource();

@@ -18,5 +18,9 @@
     "alpha": 0.05,
     "power": 0.8,
     "correction": "holm"
+  },
+  "record": {
+    "trajectory": true,
+    "wiki": true
   }
 }
