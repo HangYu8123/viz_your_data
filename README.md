@@ -10,6 +10,9 @@ data into paper-ready figures and statistics:
 - **Born at final size.** Figures are exported as PDF at exact IEEE widths
   (3.5 in single column, 7.16 in double column) with 8 pt fonts, so
   `\includegraphics[width=\columnwidth]` needs no rescaling.
+- **Self-explaining figures.** Axes named with units, values on bars, the
+  claim each figure supports, and the significance test drawn on the figure;
+  `viz/figures.md` documents all of it per figure.
 - **Ranked plans.** For each hypothesis the agent proposes at least three
   candidate figures (axes, plot type, purpose, width, recommendation score) and
   asks three short questions before building anything.

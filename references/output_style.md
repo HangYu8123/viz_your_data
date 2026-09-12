@@ -39,7 +39,7 @@ text so the reader can act on it after reading one line.
 |---|---|---|---|
 | Step 0 hand-off | the GUI URL to open | what to fill in (≤5 bullets) | "Say *saved* when done." |
 | plan.md presentation | "Answer the three questions below." | per hypothesis: #1 candidate + score in one line; full table lives in plan.md | the three questions, numbered, three options each |
-| after build | "Open `viz/figures.ipynb`." | table: id, hypothesis, plot, width (≤5 rows visible, rest in the notebook TOC) | "Rate them at http://127.0.0.1:8765/feedback" |
+| after build | "Open `viz/figures.ipynb`." | per figure (≤5 inline): x and y with units, values, claim it supports and why, test shown — the card essence from `figures.md` | "Rate them at http://127.0.0.1:8765/feedback" |
 | after feedback | "F2 revised (v2): paired lines, legend below." | what changed, one line per revised figure | "Accept v2, or say what to change." |
 | final message | where the deliverables are | wins, verdicts, what could not be verified — ≤5 bullets each | one next action (push, insert into paper, run stats) |
 

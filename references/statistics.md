@@ -90,7 +90,15 @@ Multiple comparisons, dependence in trial-level data, exclusions, anything
 hand-coded.
 ```
 
-## 5. statistics.html
+## 5. Show the result on the figure
+
+Every claim with a figure gets its result drawn on that figure:
+`st.annotate_sig(ax, claim, x1, x2, mode="stars+effect")` (bracket, stars,
+effect size) for two-group claims; `st.annotate_posthoc(ax, claim, positions)`
+for ANOVA pairs (Holm-adjusted); `st.stats_footer(ax, claim)` for correlations.
+Use the adjusted p (the helpers do). The caption repeats the APA line.
+
+## 6. statistics.html
 
 `python build_stats_html.py viz/statistics.json viz/statistics.html` renders:
 a summary table, a forest plot of standardized effects with CIs against the

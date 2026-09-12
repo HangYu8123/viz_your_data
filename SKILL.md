@@ -37,6 +37,15 @@ are relative to it. Project-side artifacts all live in `<project>/viz/`.
   encode a condition only by color — add markers, hatches, or line styles.
 - Report only what you actually verified. If a parser could not read some files,
   say which ones and why; don't silently drop them.
+- **Every figure explains itself.** x and y are named with units
+  (`st.label_axes`), bars carry values when numbers matter (`st.value_labels`),
+  the claim it supports is named in `st.save(meta={"claim": "H1", …})`, and
+  when statistics ran, the test result is drawn on the figure
+  (`st.annotate_sig` / `st.annotate_posthoc` / `st.stats_footer`). `st.save`
+  warns about missing labels or units; treat warnings as build failures.
+  `viz/figures.md` (from `scripts/build_figure_cards.py`) documents axes,
+  values, claim and reading for every figure, and the chat message repeats the
+  essentials — see `references/figure_cards.md`.
 - **Record as you go.** From Step 1 on, every decision that shapes a figure is
   logged with `scripts/trajectory.py log` (stage, hypothesis, figure, note);
   see `references/wiki_protocol.md` §1 for what belongs at each stage. The
@@ -189,7 +198,10 @@ adopt a suggestion just because an agent made it — say when you disagree.
 
 ### Step 3 — Build the notebook
 
-Generate `viz/figures.ipynb` with `scripts/build_notebook.py`. Structure:
+If `statistics.enabled` is true, compute the statistics **before** the figure
+cells (write `viz/statistics.py` as in Step 5 and load `statistics.json` in
+the setup cell) so every figure can draw its test result. Generate
+`viz/figures.ipynb` with `scripts/build_notebook.py`. Structure:
 
 1. A markdown cell titled with the study name and a table of contents mapping
    figure ids → hypothesis.
@@ -198,20 +210,36 @@ Generate `viz/figures.ipynb` with `scripts/build_notebook.py`. Structure:
 3. For each accepted candidate: a markdown header (`## F3 — H2: intervention count
    by condition`) stating purpose (and the reference paper if the style came
    from the researcher), then **one code cell** that builds the figure with
-   `st.fig(...)`, plots, annotates, and calls `st.save(f, "F3_interventions")`.
+   `st.fig(...)`, plots, labels axes with units (`st.label_axes`), prints
+   values on bars (`st.value_labels`), draws the significance result when
+   available (`st.annotate_sig(ax, claims["H2"], x1, x2)` — stars plus effect
+   size; `st.annotate_posthoc` for ANOVA pairs; `st.stats_footer` for
+   correlations), and calls `st.save(f, "F3_interventions", meta={...})` with
+   `claim`, `hypothesis`, `values` (aggregation, error bars, n), `source`,
+   `significance`, and `reading` (which visual feature shows the claim and why).
    Keep helpers used by several figures in `viz/plot_helpers.py`, not in the notebook.
    Apply the chosen style reference with `st.use_palette("<name>")` /
    `st.apply_preset("<paper>")` (see `PALETTES` / `PRESETS` in `ieee_style.py`
    and the per-figure "Reproduce" notes in `references/styles/*/analysis.md`).
-4. A final cell calling `st.check_widths()` so the user can confirm every
-   figure is 3.5 in or 7.16 in wide.
+4. A final cell calling `st.check_widths()` and running
+   `build_figure_cards.py viz/figures viz/figures.md --stats viz/statistics.json --chat`
+   so the user can confirm every figure is 3.5 in or 7.16 in wide and gets
+   `viz/figures.md` with one card per figure (axes with units and ranges,
+   values, claim, significance shown, how to read it).
 
 Execute the notebook (`build_notebook.py … --execute`; it uses nbconvert when
 installed and otherwise runs the cells directly) so the user opens a notebook
 that already shows every figure. Look at every PNG preview yourself before
 reporting: check for clipped labels, overlapping ticks, unreadable legends, and
-fonts that are visibly bigger or smaller than 8 pt at final size. Fix and re-run —
+fonts that are visibly bigger or smaller than 8 pt at final size, axes without
+units, bars without values, missing significance marks. Fix and re-run —
 that's exactly why the figures are born at final width.
+
+Then **explain every figure in chat** (`references/figure_cards.md`, "The chat
+explanation"): what x and y are with units, what the values are (aggregation,
+error bars, n), which claim it supports and why (the visual feature that shows
+it), and the test result drawn on it. At most five figures inline; the rest are
+in `viz/figures.md`.
 
 ### Step 4 — Optional HTML exploration report
 
@@ -250,6 +278,10 @@ Deliverables:
 4. **`viz/statistics.html`** — `python scripts/build_stats_html.py
    viz/statistics.json viz/statistics.html`: forest plot of effects vs minimal
    effect, per-claim paired-change / means panels, box + points, test tables.
+
+When statistics are enabled the figures already carry the results (Step 3);
+after any statistics change, re-run the notebook so figure annotations,
+`figures.md` and `statistics.md` agree.
 
 Be candid in verdicts: "significant but below minimal effect" and
 "inconclusive (underpowered)" are legitimate outcomes and reviewers prefer them
@@ -306,6 +338,8 @@ Then send the final message (format below).
 - `references/styles/` — reference figure library: images + vector sources from ROSETTA, DeepSeek, Cambrian-S, Cosmos 3, Memory Anchors, with style analyses and palettes (`README.md` is the index; `palettes.png` the swatches).
 - `scripts/stats_helpers.py` — scipy-only tests, effect sizes with CIs, MDE / SESOI recommendation, Holm, APA lines. Copy into `viz/`.
 - `scripts/build_stats_html.py` — renders `statistics.json` into `statistics.html`.
+- `scripts/build_figure_cards.py` — writes `viz/figures.md` (axes, values, claim, significance, reading per figure) from the JSON sidecars `st.save` writes; `--chat` prints the per-figure chat summary.
+- `references/figure_cards.md` — what every figure must make explicit, the card template, the chat explanation shape.
 - `references/statistics.md` — test-selection table, SESOI logic, statistics.md layout.
 - `scripts/trajectory.py` — append-only run trajectory (raw layer): start / log / feedback / close / render.
 - `scripts/wiki.py` — persistent wiki at `~/.viz_results/wiki` (patterns, logs, skill-impact): show / pattern / log / impact.
@@ -330,7 +364,8 @@ in Claude Code or `$viz_results` in Codex (or just describe the task).
 Follow `references/output_style.md`: first line = the one thing to do now
 (open the notebook, insert a figure, push). Then lead with what was produced and where (`viz/figures.ipynb`, `viz/figures/*.pdf`),
 which hypotheses each figure addresses, which research / diversifier suggestions
-were adopted, the statistics verdicts per claim if that stage ran, and anything
-you could not verify. Keep the list of figures as a
+were adopted, the per-figure explanation (axes, values, claim, significance —
+≤5 figures inline, rest in `viz/figures.md`), the statistics verdicts per claim
+if that stage ran, and anything you could not verify. Keep the list of figures as a
 short table: id, hypothesis, plot type, width. Mention that re-running the
 notebook regenerates all PDFs and that parsers are cached.
